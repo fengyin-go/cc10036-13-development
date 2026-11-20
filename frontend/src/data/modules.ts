@@ -200,6 +200,28 @@ export const MODULES: ModuleMeta[] = [
     actionTargets: {"开始实验": "草稿", "结束实验": "进行中", "归档实验": "已结束"},
     metrics: ["实验总数", "进行中数", "已结束数"],
   },
+  {
+    key: "delivery_audience",
+    name: "交付受众",
+    entity: "交付受众",
+    desc: "维护报表对象与受众身份的关联，按业务归属明确每份数据的交付用途、范围权限与只读身份",
+    fields: ["接收人", "受众身份", "业务域", "报表对象", "数据用途", "范围规则ID", "覆盖区域", "核对指标", "订阅期", "只读权限"],
+    statuses: ["待授权", "已授权", "已撤销"],
+    actions: ["确认授权", "撤销授权"],
+    actionTargets: {"确认授权": "待授权", "撤销授权": "已授权"},
+    metrics: ["受众总数", "已授权数", "覆盖业务域"],
+  },
+  {
+    key: "delivery_receipt",
+    name: "交付收据",
+    entity: "交付收据",
+    desc: "记录订阅期内每份交付的导出文件、数据行数、分域合计与权限范围，同域同人本期幂等只记一次",
+    fields: ["订阅期", "业务域", "接收人", "受众身份", "报表对象", "导出任务ID", "文件名称", "数据行数", "分域合计", "权限范围", "推送时间", "推送渠道"],
+    statuses: ["已交付", "未授权", "已撤销"],
+    actions: [],
+    actionTargets: {},
+    metrics: ["收据总数", "已交付数", "幂等拦截"],
+  },
 ]
 
 export const MODULE_BY_KEY: Map<string, ModuleMeta> = new Map(

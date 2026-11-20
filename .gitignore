@@ -82,6 +82,11 @@ htmlcov/
 Thumbs.db
 desktop.ini
 
+# ===== 运行期交付文件 =====
+backend/app/delivery_files/
+backend/delivery_files/
+delivery_files/
+
 # ===== 运行期本地文件 =====
 *.sqlite3
 *.db

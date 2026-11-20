@@ -11,14 +11,18 @@
 .
 ├── frontend/                 Vue 3 + Vite + TypeScript 前端
 │   ├── src/views/WorkbenchView.vue|tsx  全部模块共享工作台
-│   ├── src/data/modules.ts              18个业务模块配置
+│   ├── src/data/modules.ts              20个业务模块配置
 │   ├── src/api/              统一请求封装
 │   └── vite.config.ts        dev server 配置（open: false）
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/resource.py  通用查询/导出/登记/动作接口
+│   ├── app/routers/delivery.py  交付链路接口（受众/推送/收据/文件）
 │   ├── app/services/<key>.py    每个模块独立领域逻辑
+│   ├── app/services/delivery.py 交付编排：订阅→受众→导出→收据
+│   ├── app/services/scope_filter.py 安全范围表达式解析器（无 eval）
 │   ├── app/services/base.py     共享服务骨架
-│   └── app/store.py          内存数据仓库与示例数据
+│   ├── app/store.py          内存数据仓库与示例数据
+│   └── scripts/              端到端模拟推送与核对脚本
 ├── .gitignore
 └── docker-compose.yml
 ```
@@ -68,6 +72,44 @@ npm run dev
 | 结果缓存 | `result_cache` | 缓存条目 | 缓存键、查询描述、结果行数 |
 | 数据范围 | `olap_scope` | 范围规则 | 规则名称、数据范围、授权对象 |
 | 实验分析 | `ab_analysis` | 实验配置 | 实验名称、对照组、实验组 |
+| 交付受众 | `delivery_audience` | 交付受众 | 接收人、受众身份、业务域、范围规则ID、覆盖区域 |
+| 交付收据 | `delivery_receipt` | 交付收据 | 订阅期、业务域、接收人、文件名称、分域合计、权限范围 |
+
+## 报表订阅交付链路
+
+报表订阅通过「交付受众 → 数据范围 → 即席导出 → 交付收据」串联出按业务归属的
+只读交付能力：
+
+- `delivery_audience`：报表对象与受众身份的关联，明确每份数据的接收人、业务身份、
+  业务域、覆盖区域、核对指标、订阅期和只读用途。
+- `olap_scope`：受众绑定已生效的数据范围规则，行级过滤由
+  `app/services/scope_filter.py` 的白名单表达式解析器执行（不使用 eval，
+  非法表达式按未授权处理）。
+- `adhoc_export`：按受众范围过滤与列投影生成只读业务报表，文件头写入业务归属、
+  权限范围、分域合计与 MD5 校验和，并保留本期分域合计行。
+- `delivery_receipt`：以「订阅期 + 业务域 + 接收人」为幂等键，同域同人本期
+  并发生成只记一次交付。
+
+接口入口（见 `backend/app/routers/delivery.py`）：
+
+```bash
+# 运行一次订阅模拟推送
+curl -X POST http://127.0.0.1:8000/api/delivery/subscriptions/4/push
+# 核对交付收据与期次汇总
+curl 'http://127.0.0.1:8000/api/delivery/receipts?period=2026-11'
+curl 'http://127.0.0.1:8000/api/delivery/receipts/summary?period=2026-11'
+# 下载交付报表
+curl -OJ 'http://127.0.0.1:8000/api/delivery/files/<文件名称>'
+```
+
+端到端核对脚本：
+
+```bash
+cd backend
+.venv/bin/python -I scripts/test_scope_filter.py      # 范围表达式安全解析
+DELIVERY_FILE_DIR=/tmp/delivery-run .venv/bin/python -I scripts/simulate_delivery.py
+.venv/bin/python -I scripts/http_smoke_delivery.py    # 需先启动后端
+```
 
 ## 约定
 

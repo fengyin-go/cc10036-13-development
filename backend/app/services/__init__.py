@@ -20,6 +20,9 @@ from app.services.query_scheduler import QuerySchedulerService
 from app.services.result_cache import ResultCacheService
 from app.services.olap_scope import OlapScopeService
 from app.services.ab_analysis import AbAnalysisService
+from app.services.delivery_audience import DeliveryAudienceService
+from app.services.delivery_receipt import DeliveryReceiptService
+from app.services.delivery import DeliveryOrchestrator
 
 SERVICES: dict[str, BaseModuleService] = {
     "metric_def": MetricDefService(),
@@ -40,7 +43,12 @@ SERVICES: dict[str, BaseModuleService] = {
     "result_cache": ResultCacheService(),
     "olap_scope": OlapScopeService(),
     "ab_analysis": AbAnalysisService(),
+    "delivery_audience": DeliveryAudienceService(),
+    "delivery_receipt": DeliveryReceiptService(),
 }
+
+# 交付编排器单例：报表订阅→交付受众→即席导出→交付收据 的链路入口。
+delivery_orchestrator = DeliveryOrchestrator()
 
 
 def service_for(module: str) -> BaseModuleService | None:

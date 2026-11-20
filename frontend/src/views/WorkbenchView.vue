@@ -9,11 +9,51 @@
         <button class="btn primary" data-testid="open-create" type="button" @click="openCreate">
           登记{{ meta.entity }}
         </button>
+        <button
+          v-if="meta.key === 'report_subscription'"
+          class="btn"
+          data-testid="simulate-push"
+          type="button"
+          :disabled="pushing"
+          @click="simulatePush(selectedSubscriptionId)"
+        >
+          {{ pushing ? '推送中…' : '模拟推送（按交付受众）' }}
+        </button>
         <button class="btn" data-testid="export" type="button" @click="exportRows">
           导出{{ meta.name }}清单
         </button>
       </div>
     </header>
+
+    <div v-if="pushResult" class="push-panel" data-testid="push-panel">
+      <header class="push-panel-head">
+        <strong>交付推送结果</strong>
+        <button class="link" type="button" @click="pushResult = null">关闭</button>
+      </header>
+      <p class="push-summary">{{ pushResult.message }}</p>
+      <ul class="push-metrics">
+        <li>订阅期：{{ pushResult.period }}</li>
+        <li>受众数：{{ pushResult.audience_count }}</li>
+        <li>成功交付：{{ pushResult.delivery_count }}</li>
+        <li>幂等复用：{{ pushResult.deduplicated_count }}</li>
+        <li>本期收据：{{ pushResult.receipt_count }}</li>
+      </ul>
+      <table class="data-table push-table">
+        <thead>
+          <tr><th>业务域</th><th>受众身份</th><th>接收人</th><th>数据行数</th><th>分域合计</th><th>交付文件</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in pushResult.deliveries" :key="String(item.audience_id)">
+            <td>{{ item.domain ?? '—' }}</td>
+            <td>{{ item.identity ?? '—' }}</td>
+            <td>{{ item.recipient ?? '—' }}</td>
+            <td>{{ item.ok ? item.data_row_count : '未交付' }}</td>
+            <td>{{ item.domain_totals ? JSON.stringify(item.domain_totals) : (item.reason ?? '—') }}</td>
+            <td>{{ item.file_name ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="stat-row">
       <article v-for="item in stats" :key="item.label" class="stat-card">
@@ -50,6 +90,15 @@
           <td v-for="column in meta.fields" :key="column">{{ row[column] ?? '—' }}</td>
           <td>{{ row.status }}</td>
           <td class="row-actions">
+            <button
+              v-if="meta.key === 'report_subscription'"
+              class="link"
+              type="button"
+              :data-testid="`push-${row.id}`"
+              @click="simulatePush(Number(row.id))"
+            >
+              模拟推送
+            </button>
             <button
               v-for="action in meta.actions"
               :key="action"
@@ -101,7 +150,9 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  pushSubscription,
   runAction as applyAction,
+  type DeliveryPushResult,
 } from '@/api/backend-service'
 import type { EntryRow } from '@/data/types'
 
@@ -115,6 +166,9 @@ const filterFields = meta.fields.slice(0, 3)
 const showCreate = ref(false)
 const creating = ref(false)
 const createValues = ref<Record<string, string>>({})
+const pushing = ref(false)
+const pushResult = ref<DeliveryPushResult | null>(null)
+const selectedSubscriptionId = ref<number | null>(null)
 const stats = computed(() => [
   { label: meta.metrics[0], value: total.value },
   { label: meta.metrics[1], value: rows.value.filter((row) => row.status === meta.statuses[1]).length },
@@ -173,6 +227,23 @@ async function runAction(action: string, row: EntryRow) {
     await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '操作失败'
+  }
+}
+
+async function simulatePush(subscriptionId: number | null) {
+  if (subscriptionId === null) {
+    errorMessage.value = '请先在列表中选择要推送的订阅'
+    return
+  }
+  errorMessage.value = ''
+  pushing.value = true
+  try {
+    pushResult.value = await pushSubscription(subscriptionId)
+    await reload()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '模拟推送失败'
+  } finally {
+    pushing.value = false
   }
 }
 

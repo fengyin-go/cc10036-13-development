@@ -70,3 +70,11 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .analysis-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 12px 0; }
 .analysis-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--brand); min-width: 24px; position: relative; transition: height 0.4s; }
 .analysis-bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; }
+/* 交付推送面板 */
+.push-panel { margin: 12px 0; background: #fff; border: 1px solid var(--brand); border-radius: 8px; padding: 14px 16px; }
+.push-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.push-summary { font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
+.push-metrics { display: flex; gap: 18px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
+.push-metrics li { background: #f0f5ff; border-radius: 6px; padding: 4px 10px; }
+.push-table { font-size: 12px; }
+.push-table th, .push-table td { max-width: 320px; word-break: break-all; }

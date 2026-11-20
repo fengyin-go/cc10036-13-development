@@ -34,22 +34,34 @@ class ReportSubscriptionService(BaseModuleService):
         ]
 
     def simulate_push(self, subscription_id: int) -> dict[str, Any]:
-        """模拟推送订阅内容。"""
+        """模拟推送订阅内容。
+
+        串联交付链路：按订阅绑定的交付受众（业务归属+受众身份）生成只读业务报表，
+        同域同人本期并发只记一次交付，并回写最近推送时间。
+        """
         sub = store.find(self.MODULE, subscription_id)
         if sub is None:
             return {"ok": False, "message": f"订阅 {subscription_id} 不存在"}
-        channel = sub.get("推送渠道", "邮件")
+
+        # 延迟导入，避免服务包初始化阶段的循环依赖。
+        from app.services.delivery import DeliveryOrchestrator
+
+        result = DeliveryOrchestrator().push_subscription(subscription_id)
+        if not result.get("ok"):
+            return result
+
+        sub["最近推送时间"] = result.get("push_time")
+        # 兼容旧调用方的扁平字段，同时保留完整交付清单。
         recipients = str(sub.get("接收人", "")).split(",")
-        return {
-            "ok": True,
+        result.update({
             "subscription_name": sub.get("订阅名称"),
             "report_object": sub.get("报表对象"),
-            "channel": channel,
-            "recipient_count": len(recipients),
-            "recipients": recipients[:3],
+            "channel": sub.get("推送渠道", "邮件"),
+            "recipient_count": len([r for r in recipients if r.strip()]),
+            "recipients": [r.strip() for r in recipients if r.strip()][:3],
             "format": sub.get("推送格式"),
-            "message": f"模拟通过{channel}向{len(recipients)}位接收人推送报表",
-        }
+        })
+        return result
 
     def bulk_toggle(self, subscription_ids: list[int], action: str) -> dict[str, Any]:
         """批量启停订阅。"""

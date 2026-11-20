@@ -1,6 +1,6 @@
-"""业务路由汇总：所有模块共用一套资源路由，由领域服务完成分派。"""
+"""业务路由汇总：交付链路为显式路径需先注册，资源路由的动态路径兜底。"""
 from __future__ import annotations
 
-from app.routers import resource
+from app.routers import delivery, resource
 
-ROUTERS = [resource]
+ROUTERS = [delivery, resource]
